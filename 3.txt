@@ -1,0 +1,56 @@
+To determine which server has multiple app pool crashes using JavaScript code querying Elasticsearch within a GitHub Actions workflow, you need to analyze the logs or data stored in Elasticsearch to identify patterns indicating app pool crashes and their associated servers. Here's how you can approach it:
+
+Query Elasticsearch for Relevant Logs: Use the Elasticsearch JavaScript client to query the logs stored in Elasticsearch. You will need to construct a query that filters logs based on criteria indicating app pool crashes.
+
+Parse Log Data: Once you retrieve the logs, parse them to extract relevant information such as the server or EC2 instance ID associated with each log entry.
+
+Count App Pool Crashes per Server: Aggregate the parsed log data to count the number of app pool crashes per server. You can use JavaScript objects or maps to store and update the counts for each server.
+
+Identify Servers with Multiple App Pool Crashes: Iterate through the aggregated data to identify servers with multiple app pool crashes based on your defined threshold or criteria.
+
+Here's a basic example of how you can implement these steps in JavaScript code within your GitHub Actions workflow:
+
+javascript
+
+const { Client } = require('@elastic/elasticsearch');
+
+async function queryElasticsearch() {
+  const client = new Client({ node: process.env.ELASTICSEARCH_URL });
+
+  try {
+    // Query Elasticsearch for logs indicating app pool crashes
+    const { body } = await client.search({
+      index: 'your_index_name',
+      body: {
+        query: {
+          match: { 'error_type': 'app_pool_crash' }
+        }
+      }
+    });
+
+    // Parse log data and count app pool crashes per server
+    const appPoolCrashesPerServer = {};
+    body.hits.hits.forEach(hit => {
+      const server = hit._source.server; // Assuming 'server' is the field indicating server ID
+      if (server) {
+        appPoolCrashesPerServer[server] = (appPoolCrashesPerServer[server] || 0) + 1;
+      }
+    });
+
+    // Identify servers with multiple app pool crashes
+    const serversWithMultipleCrashes = Object.keys(appPoolCrashesPerServer).filter(server => appPoolCrashesPerServer[server] > 1);
+
+    console.log('Servers with multiple app pool crashes:', serversWithMultipleCrashes);
+  } catch (error) {
+    console.error('Error querying Elasticsearch:', error);
+  }
+}
+
+queryElasticsearch();
+In this example:
+
+We use the Elasticsearch JavaScript client to query Elasticsearch and retrieve logs related to app pool crashes.
+We parse the retrieved logs to extract the server information associated with each log entry.
+We count the number of app pool crashes per server and identify servers with multiple crashes.
+The identified servers with multiple crashes are logged to the console for further analysis or action within your GitHub Actions workflow.
+Ensure that you set the ELASTICSEARCH_URL environment variable securely within your GitHub repository's secrets to authenticate with Elasticsearch. Additionally, customize the code to match your specific log structure and criteria for identifying app pool crashes and associated servers.
